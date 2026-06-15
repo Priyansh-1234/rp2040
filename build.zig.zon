@@ -1,0 +1,14 @@
+.{ 
+    .name = .rp2040_rtos,
+    .version = "0.0.0", 
+    .fingerprint = 0xe53845ec6a970761, 
+    .minimum_zig_version = "0.16.0", 
+
+    .paths = .{
+    "build.zig",
+    "build.zig.zon",
+    "src",
+    "tools",
+    "bootloader",
+    } 
+}
