@@ -36,7 +36,10 @@ Below is the layout of the project workspace:
 *   [bootloader/](file:///home/priyansh/projects/rp2040/bootloader)
     *   [boot2.S](file:///home/priyansh/projects/rp2040/bootloader/boot2.S) - Second-stage bootloader assembly.
     *   [linker.ld](file:///home/priyansh/projects/rp2040/bootloader/linker.ld) - Linker script for RAM and Flash memory mapping.
-    *   [startup.zig](file:///home/priyansh/projects/rp2040/bootloader/startup.zig) - Startup execution, BSS zeroing, and main vector table configuration.
+    *   [startup.zig](file:///home/priyansh/projects/rp2040/bootloader/startup.zig) - Startup execution, BSS zeroing, main vector table configuration, and HAL early initialization.
+*   [hal/](file:///home/priyansh/projects/rp2040/hal)
+    *   [hal.zig](file:///home/priyansh/projects/rp2040/hal/hal.zig) - Main HAL namespace and system initialization launcher.
+    *   [resets.zig](file:///home/priyansh/projects/rp2040/hal/resets.zig) - Subsystem Resets controller driver using enum-based offsets and atomic set/clear registers.
 *   [src/](file:///home/priyansh/projects/rp2040/src)
     *   [main.zig](file:///home/priyansh/projects/rp2040/src/main.zig) - Application entry point.
 *   [tools/](file:///home/priyansh/projects/rp2040/tools)
@@ -46,9 +49,9 @@ Below is the layout of the project workspace:
 
 #### A. Build System (`build.zig`)
 *   Targets the `thumb-cortex_m0plus-freestanding-eabi` triple.
-*   First compiles `tools/elf2uf2.zig` as a native host executable.
-*   Compiles `bootloader/startup.zig` as the root module for the firmware executable, which imports the user application (`src/main.zig`) as `app`.
-*   Links `bootloader/boot2.S` and uses `bootloader/linker.ld` for layout directives.
+*   Compiles `tools/elf2uf2.zig` as a native host executable to generate the UF2 image helper.
+*   Defines a module named `"hal"` mapped to `hal/hal.zig`.
+*   Adds the `"hal"` module as an import to both the user application (`app_module`) and the reset startup driver (`startup_module`), allowing clean `@import("hal")` usage.
 *   Produces a raw binary representation (`firmware.bin`) which is then passed to `elf2uf2` to compute the boot2 checksum, prepend UF2 headers, and output `firmware.uf2`.
 
 #### B. Second-Stage Bootloader (`bootloader/boot2.S`)
@@ -59,10 +62,8 @@ Below is the layout of the project workspace:
 
 #### C. Startup Setup (`bootloader/startup.zig`)
 *   Declares the raw `_start` entry point under the naked calling convention.
-*   Runs inline assembly to:
-    1.  Copy initialized global data (`.data`) from Flash (`_sidata`) to RAM (`_sdata` to `_edata`).
-    2.  Zero out uninitialized global variables (`.bss`) from `_sbss` to `_ebss`.
-    3.  Call `_call_main`, which dynamically checks for and runs `app.main()`.
+*   Runs inline assembly to copy `.data` from Flash to RAM and zero out `.bss`.
+*   Invokes `hal.init()` to initialize peripheral reset states before calling `app.main()`.
 *   Defines the main `VectorTable` structure and links it to `.vectors`.
 
 #### D. Linker Layout (`bootloader/linker.ld`)
@@ -81,9 +82,12 @@ This section serves as a history log of what has been accomplished, design decis
 
 ### Active Decisions Log
 *   **Linker Stack Placement:** The stack top (`_stack_top`) is currently placed at `0x20040000`. In a multi-tasking context (RTOS), this will act as the Main Stack Pointer (MSP) for interrupts and scheduler execution, while each thread will use a separate Process Stack Pointer (PSP) pointing to an aligned block in RAM.
+*   **Modular HAL Structure:** Configured `hal` as a named build module in `build.zig`. This allows other files to import it cleanly as `@import("hal")` instead of using relative paths (e.g. `../hal/hal.zig`), which triggers compiler boundaries errors in freestanding EABI builds.
+*   **Atomic Register Access (Resets):** Implemented write-modifying aliases for resets (`ALIAS_SET` and `ALIAS_CLR` representing address offsets `0x2000` and `0x3000` respectively) to prevent read-modify-write CPU races.
 
 ### Backlog & Next Steps
-1.  **HAL Planning:** Discuss the structure of the HAL in Zig. Define how to wrap registers (e.g., Clocks, GPIO, UART) in type-safe Zig constructs.
-2.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
-3.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
-4.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
+1.  **Clocks Setup:** Implement XOSC and PLL configurations under the HAL to scale the RP2040 system clock to 125 MHz.
+2.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
+3.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
+4.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
+5.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.

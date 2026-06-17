@@ -27,6 +27,13 @@ pub fn build(b: *std.Build) void {
     };
     const target = b.resolveTargetQuery(target_query);
 
+    // Create the HAL module so it can be imported anywhere in the project
+    const hal_module = b.createModule(.{
+        .root_source_file = b.path("hal/hal.zig"),
+        .target = target,
+        .optimize = .ReleaseSmall,
+    });
+
     // The user can create the files in the src/main.zig file
     // and the start of their code is the main function.
     // Currently the main function can't take the init parameter
@@ -34,8 +41,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = .ReleaseSmall,
-        .imports = &.{},
     });
+    app_module.addImport("hal", hal_module);
 
     // This is the actual entry point of the code
     const startup_module = b.createModule(.{
@@ -44,6 +51,7 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
     startup_module.addImport("app", app_module);
+    startup_module.addImport("hal", hal_module);
 
     const exe = b.addExecutable(.{
         .name = "firmware",

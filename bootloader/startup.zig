@@ -1,5 +1,6 @@
 const std = @import("std");
 const app = @import("app");
+const hal = @import("hal");
 
 // Linker symbols
 extern const _sidata: u32;
@@ -45,6 +46,10 @@ export fn _start() callconv(.naked) noreturn {
 }
 
 export fn _call_main() callconv(.c) void {
+    if (@hasDecl(hal, "init")) {
+        hal.init();
+    }
+
     if (@hasDecl(app, "main")) {
         const typeInfo = @typeInfo(@TypeOf(app.main));
         if (typeInfo == .@"fn") {
