@@ -40,6 +40,8 @@ Below is the layout of the project workspace:
 *   [hal/](file:///home/priyansh/projects/rp2040/hal)
     *   [hal.zig](file:///home/priyansh/projects/rp2040/hal/hal.zig) - Main HAL namespace and system initialization launcher.
     *   [resets.zig](file:///home/priyansh/projects/rp2040/hal/resets.zig) - Subsystem Resets controller driver using enum-based offsets and atomic set/clear registers.
+    *   [xosc.zig](file:///home/priyansh/projects/rp2040/hal/xosc.zig) - External Crystal Oscillator (XOSC) configuration using RMW packed register structures.
+    *   [pll.zig](file:///home/priyansh/projects/rp2040/hal/pll.zig) - Phase-Locked Loop (PLL) configuration layout.
 *   [src/](file:///home/priyansh/projects/rp2040/src)
     *   [main.zig](file:///home/priyansh/projects/rp2040/src/main.zig) - Application entry point.
 *   [tools/](file:///home/priyansh/projects/rp2040/tools)
@@ -84,10 +86,12 @@ This section serves as a history log of what has been accomplished, design decis
 *   **Linker Stack Placement:** The stack top (`_stack_top`) is currently placed at `0x20040000`. In a multi-tasking context (RTOS), this will act as the Main Stack Pointer (MSP) for interrupts and scheduler execution, while each thread will use a separate Process Stack Pointer (PSP) pointing to an aligned block in RAM.
 *   **Modular HAL Structure:** Configured `hal` as a named build module in `build.zig`. This allows other files to import it cleanly as `@import("hal")` instead of using relative paths (e.g. `../hal/hal.zig`), which triggers compiler boundaries errors in freestanding EABI builds.
 *   **Atomic Register Access (Resets):** Implemented write-modifying aliases for resets (`ALIAS_SET` and `ALIAS_CLR` representing address offsets `0x2000` and `0x3000` respectively) to prevent read-modify-write CPU races.
+*   **Clock Register Mapping and RMW Access:** Established a contiguous `extern struct` block memory mapping for the XOSC peripheral, using the Read-Modify-Write (RMW) local-variable pattern to perform safe 32-bit register modifications instead of unsafe volatile sub-field mutations.
 
 ### Backlog & Next Steps
-1.  **Clocks Setup:** Implement XOSC and PLL configurations under the HAL to scale the RP2040 system clock to 125 MHz.
-2.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
-3.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
-4.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
-5.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
+1.  **PLL Implementation:** Complete the driver for configuring the PLLs (VCO locking, post-divider setup) in `hal/pll.zig`.
+2.  **Clock Tree Routing:** Connect XOSC and PLL outputs to `clk_sys` and `clk_ref` (handling safe fallback switches away from auxiliary clocks), scaling the system clock to 125 MHz.
+3.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
+4.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
+5.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
+6.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
