@@ -10,5 +10,7 @@ pub fn init() void {
 
     // Release and wait for peripherals that can operate on the default boot clocks immediately.
     resets.unreset_block_wait(resets.depend_on_sys_ref);
+
+    // initializes the xosc clock
     xosc.init();
 }

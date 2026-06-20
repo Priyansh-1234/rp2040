@@ -39,6 +39,7 @@ Below is the layout of the project workspace:
     *   [startup.zig](file:///home/priyansh/projects/rp2040/bootloader/startup.zig) - Startup execution, BSS zeroing, main vector table configuration, and HAL early initialization.
 *   [hal/](file:///home/priyansh/projects/rp2040/hal)
     *   [hal.zig](file:///home/priyansh/projects/rp2040/hal/hal.zig) - Main HAL namespace and system initialization launcher.
+    *   [register.zig](file:///home/priyansh/projects/rp2040/hal/register.zig) - Generic register wrapper abstraction providing `.read()`, `.write()`, and `.modify()` helpers.
     *   [resets.zig](file:///home/priyansh/projects/rp2040/hal/resets.zig) - Subsystem Resets controller driver using enum-based offsets and atomic set/clear registers.
     *   [xosc.zig](file:///home/priyansh/projects/rp2040/hal/xosc.zig) - External Crystal Oscillator (XOSC) configuration using RMW packed register structures.
     *   [pll.zig](file:///home/priyansh/projects/rp2040/hal/pll.zig) - Phase-Locked Loop (PLL) configuration layout.
@@ -86,12 +87,13 @@ This section serves as a history log of what has been accomplished, design decis
 *   **Linker Stack Placement:** The stack top (`_stack_top`) is currently placed at `0x20040000`. In a multi-tasking context (RTOS), this will act as the Main Stack Pointer (MSP) for interrupts and scheduler execution, while each thread will use a separate Process Stack Pointer (PSP) pointing to an aligned block in RAM.
 *   **Modular HAL Structure:** Configured `hal` as a named build module in `build.zig`. This allows other files to import it cleanly as `@import("hal")` instead of using relative paths (e.g. `../hal/hal.zig`), which triggers compiler boundaries errors in freestanding EABI builds.
 *   **Atomic Register Access (Resets):** Implemented write-modifying aliases for resets (`ALIAS_SET` and `ALIAS_CLR` representing address offsets `0x2000` and `0x3000` respectively) to prevent read-modify-write CPU races.
-*   **Clock Register Mapping and RMW Access:** Established a contiguous `extern struct` block memory mapping for the XOSC peripheral, using the Read-Modify-Write (RMW) local-variable pattern to perform safe 32-bit register modifications instead of unsafe volatile sub-field mutations.
+*   **Register Wrapper API Pattern:** Designed and implemented a lightweight generic `Register(T)` wrapper (in `hal/register.zig`) to handle clean type-safe hardware register access with `.read()`, `.write()`, and `.modify()` methods. This replaces raw struct fields directly mapped to pointer dereferences and optimizes away compile-time fields with zero runtime overhead.
+*   **Refactored XOSC Initialization:** Ported the XOSC driver to use the new `Register` wrapper API, and resolved a bug in XOSC enablement by setting `.enable = .enable` (`0xfab`) to prevent boot hangs.
+*   **Clean and Type-Safe PLL Driver:** Ported the PLL driver using the new `Register` wrapper, incorporating compile-time asserts (`comptime` check block) to validate feedback/post-divider bounds, loop design rules, and minimum reference frequencies based on RP2040 Datasheet constraints (Section 2.18.2).
 
 ### Backlog & Next Steps
-1.  **PLL Implementation:** Complete the driver for configuring the PLLs (VCO locking, post-divider setup) in `hal/pll.zig`.
-2.  **Clock Tree Routing:** Connect XOSC and PLL outputs to `clk_sys` and `clk_ref` (handling safe fallback switches away from auxiliary clocks), scaling the system clock to 125 MHz.
-3.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
-4.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
-5.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
-6.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
+1.  **Clock Tree Routing:** Connect XOSC and PLL outputs to `clk_sys` and `clk_ref` (handling safe fallback switches away from auxiliary clocks), scaling the system clock to 125 MHz.
+2.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
+3.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
+4.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
+5.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
