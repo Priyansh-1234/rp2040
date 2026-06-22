@@ -39,8 +39,8 @@ pub const Pll = enum(usize) {
 
     pub fn reset(pll: Pll) void {
         const mask: Resets.Mask = switch (pll) {
-            .sys => .{ .pll_sys = true },
-            .usb => .{ .pll_usb = true },
+            .sys => Resets.Mask.only(.pll_sys),
+            .usb => Resets.Mask.only(.pll_usb),
         };
         Resets.reset_block(mask);
         Resets.unreset_block_wait(mask);

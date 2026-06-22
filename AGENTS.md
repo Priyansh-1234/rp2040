@@ -90,10 +90,11 @@ This section serves as a history log of what has been accomplished, design decis
 *   **Register Wrapper API Pattern:** Designed and implemented a lightweight generic `Register(T)` wrapper (in `hal/register.zig`) to handle clean type-safe hardware register access with `.read()`, `.write()`, and `.modify()` methods. This replaces raw struct fields directly mapped to pointer dereferences and optimizes away compile-time fields with zero runtime overhead.
 *   **Refactored XOSC Initialization:** Ported the XOSC driver to use the new `Register` wrapper API, and resolved a bug in XOSC enablement by setting `.enable = .enable` (`0xfab`) to prevent boot hangs.
 *   **Clean and Type-Safe PLL Driver:** Ported the PLL driver using the new `Register` wrapper, incorporating compile-time asserts (`comptime` check block) to validate feedback/post-divider bounds, loop design rules, and minimum reference frequencies based on RP2040 Datasheet constraints (Section 2.18.2).
+*   **Resolved PLL Reset Boot Hang:** Fixed a critical bug in PLL initialization where the reset mask `Resets.Mask` was initialized with default `true` values for all fields, causing the QSPI/Flash interface to be reset during execution. Changed the implementation to use `Resets.Mask.only(...)` to reset only the target PLL.
+*   **Clock Tree Routing and 125 MHz Main Speed:** Successfully configured the clock tree to route `clk_sys` to `pll_sys` (running at 125 MHz), `clk_ref` to `xosc` (12 MHz), `clk_peri` to `clk_sys` (125 MHz), `clk_usb`/`clk_adc` to `pll_usb` (48 MHz), and `clk_rtc` to `xosc` divided by 256.
+*   **GPIO / SIO Driver:** Completed a basic GPIO and Single-Cycle IO (SIO) driver supporting pin direction configuration, function selection (FSEL), and atomic output toggle/write operations.
 
 ### Backlog & Next Steps
-1.  **Clock Tree Routing:** Connect XOSC and PLL outputs to `clk_sys` and `clk_ref` (handling safe fallback switches away from auxiliary clocks), scaling the system clock to 125 MHz.
-2.  **GPIO / SIO Driver:** Build pin configuration (FSEL settings) and single-cycle IO control (GPIO reads, writes, atomic toggle).
-3.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
-4.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
-5.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
+1.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
+2.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
+3.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.

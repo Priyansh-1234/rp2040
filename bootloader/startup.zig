@@ -42,6 +42,7 @@ export fn _start() callconv(.naked) noreturn {
         \\  // Loop forever if main returns
         \\5:
         \\  b 5b
+        \\  .ltorg
     );
 }
 

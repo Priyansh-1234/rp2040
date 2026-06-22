@@ -21,9 +21,9 @@
 // Only the rp2350 parts of the code have been taken out from the copied code
 const std = @import("std");
 
-/// Bitmask representation of the RP2040 reset registers.
-/// The bit fields correspond to the peripherals mapped in the RESET register.
-/// Reference: RP2040 Datasheet, Section 2.14.3 (Register Map for RESETS).
+// Bitmask representation of the RP2040 reset registers.
+// The bit fields correspond to the peripherals mapped in the RESET register.
+// Reference: RP2040 Datasheet, Section 2.14.3 (Register Map for RESETS).
 pub const Mask = packed struct(u32) {
     adc: bool = true,
     busctrl: bool = true,
@@ -52,20 +52,20 @@ pub const Mask = packed struct(u32) {
     usbctrl: bool = true,
     padding: u7 = 0,
 
-    /// Helper to generate a mask with only one peripheral bit enabled.
+    // Helper to generate a mask with only one peripheral bit enabled.
     pub inline fn only(tag: std.meta.FieldEnum(Mask)) Mask {
         var empty = std.mem.zeroes(Mask);
         @field(empty, @tagName(tag)) = true;
         return empty;
     }
 };
-/// Mask of all peripherals.
-/// Defaults to all true due to the default initializers on the Mask struct fields.
+// Mask of all peripherals.
+// Defaults to all true due to the default initializers on the Mask struct fields.
 pub const all: Mask = .{};
 
-/// Mask of peripherals that should be reset at initialization.
-/// We do NOT reset critical system blocks (like QSPI flash lines, system clocks PLL, and syscfg)
-/// to avoid CPU / memory execution crashes.
+// Mask of peripherals that should be reset at initialization.
+// We do NOT reset critical system blocks (like QSPI flash lines, system clocks PLL, and syscfg)
+// to avoid CPU / memory execution crashes.
 pub const init: Mask = val: {
     var tmp: Mask = .{};
     tmp.io_qspi = false;
@@ -77,8 +77,8 @@ pub const init: Mask = val: {
     break :val tmp;
 };
 
-/// Mask of peripherals that depend only on clk_sys and clk_ref clocks,
-/// meaning they do not require extra clock tree configuration to be operated.
+// Mask of peripherals that depend only on clk_sys and clk_ref clocks,
+// meaning they do not require extra clock tree configuration to be operated.
 pub const depend_on_sys_ref: Mask = val: {
     var tmp: Mask = .{};
     tmp.adc = false;
@@ -93,8 +93,8 @@ pub const depend_on_sys_ref: Mask = val: {
 
 // Everything beyond this point is my handwritten code
 
-/// Base address of the Subsystem Resets controller.
-/// According to RP2040 Datasheet, Section 2.14.3 (Register Map), the Resets block starts here.
+// Base address of the Subsystem Resets controller.
+// According to RP2040 Datasheet, Section 2.14.3 (Register Map), the Resets block starts here.
 pub const Resets_base: usize = 0x4000c000;
 pub const ResetRegister = enum(u8) {
     reset = 0x00,
@@ -116,20 +116,20 @@ pub inline fn get_reset_register(register: ResetRegister, alias: Alias) *volatil
     return @ptrFromInt(Resets_base | @intFromEnum(register) | @intFromEnum(alias));
 }
 
-/// Put the peripherals specified in the mask into reset state.
-/// Writing 1 to a bit in the RESET register forces that peripheral into reset.
+// Put the peripherals specified in the mask into reset state.
+// Writing 1 to a bit in the RESET register forces that peripheral into reset.
 pub inline fn reset_block(mask: Mask) void {
     get_reset_register(.reset, .set).* = @bitCast(mask);
 }
 
-/// Release the peripherals specified in the mask from reset state.
-/// Writing 1 to a bit in the CLR alias of the RESET register clears that bit to 0, releasing the reset hold.
+// Release the peripherals specified in the mask from reset state.
+// Writing 1 to a bit in the CLR alias of the RESET register clears that bit to 0, releasing the reset hold.
 pub inline fn unreset_block(mask: Mask) void {
     get_reset_register(.reset, .clr).* = @bitCast(mask);
 }
 
-/// Wait until the peripherals specified in the mask have finished resetting and are active.
-/// According to RP2040 Datasheet Section 2.14.3, bits in RESET_DONE are set to 1 when reset is completed.
+// Wait until the peripherals specified in the mask have finished resetting and are active.
+// According to RP2040 Datasheet Section 2.14.3, bits in RESET_DONE are set to 1 when reset is completed.
 pub fn wait_for_reset_done(mask: Mask) void {
     const raw_mask = @as(u32, @bitCast(mask));
     while (get_reset_register(.done, .rw).* & raw_mask != raw_mask) {
@@ -137,14 +137,14 @@ pub fn wait_for_reset_done(mask: Mask) void {
     }
 }
 
-/// Release the block from reset and wait until it is ready for use.
+// Release the block from reset and wait until it is ready for use.
 pub fn unreset_block_wait(mask: Mask) void {
     unreset_block(mask);
     wait_for_reset_done(mask);
 }
 
-/// Resets the specified peripherals by setting their reset bits to 1,
-/// clearing them to 0, and then waiting for the reset to complete.
+// Resets the specified peripherals by setting their reset bits to 1,
+// clearing them to 0, and then waiting for the reset to complete.
 pub fn reset(mask: Mask) void {
     const raw_mask = @as(u32, @bitCast(mask));
     get_reset_register(.reset, .rw).* = raw_mask;

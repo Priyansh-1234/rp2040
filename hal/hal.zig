@@ -1,5 +1,7 @@
 pub const resets = @import("resets.zig");
 pub const xosc = @import("xosc.zig");
+pub const clocks = @import("clocks.zig");
+pub const gpio = @import("gpio.zig");
 
 /// Initialize the HAL and baseline system components.
 /// This resets all non-critical peripheral blocks (using resets.init) and then
@@ -13,4 +15,7 @@ pub fn init() void {
 
     // initializes the xosc clock
     xosc.init();
+
+    // Route clocks to target frequencies (125 MHz sys, 48 MHz peripheral/usb/adc, 46.875 kHz rtc)
+    clocks.init();
 }
