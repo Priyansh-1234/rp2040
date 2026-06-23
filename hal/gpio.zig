@@ -4,6 +4,8 @@ pub const Io_bank0_base: u32 = 0x4001_4000;
 pub const Pad_bank0_base: u32 = 0x4001_c000;
 pub const Sio_base: u32 = 0xd000_0000;
 
+// Namespace for Software I/O
+// Get gpio registers which work with gpio pin mask
 pub const Sio = struct {
     pub inline fn gpio_in() Register(u32) {
         return .{ .address = Sio_base | 0x004 };
@@ -40,6 +42,8 @@ pub const GetPinError = error{
     PinNotFound,
 };
 
+// Return the gpio pin with the specified pin number
+// if the pin does not exist returns an error
 pub inline fn getPin(pin: u5) GetPinError!Pin {
     if (pin >= 30) {
         return error.PinNotFound;
@@ -47,6 +51,7 @@ pub inline fn getPin(pin: u5) GetPinError!Pin {
     return @enumFromInt(pin);
 }
 
+// An abstraction for a gpio pin. 
 pub const Pin = enum(u5) {
     _,
 
@@ -62,10 +67,12 @@ pub const Pin = enum(u5) {
         return .{ .address = Pad_bank0_base + 0x4 + 0x4 * @as(u32, @intCast(@intFromEnum(self))) };
     }
 
+    // Get the mask representing the current gpio
     pub inline fn mask(self: Pin) u32 {
         return @as(u32, 1) << @intCast(@intFromEnum(self));
     }
 
+    // set the pull_up and pull_down of the gpio
     pub inline fn set_pull(pin: Pin, pull: Pull) void {
         switch (pull) {
             .none => pin.pad_reg().modify(.{ .pull_up_enable = 0, .pull_down_enable = 0 }),
@@ -74,6 +81,7 @@ pub const Pin = enum(u5) {
         }
     }
 
+    // set the direction of the gpio
     pub inline fn set_direction(pin: Pin, direction: Direction) void {
         switch (direction) {
             .in => Sio.gpio_oe_clr().write(pin.mask()),
@@ -81,6 +89,7 @@ pub const Pin = enum(u5) {
         }
     }
 
+    // set the value (single byte) of the gpio
     pub inline fn set_value(pin: Pin, value: u1) void {
         switch (value) {
             0 => Sio.gpio_out_clr().write(pin.mask()),
@@ -88,10 +97,12 @@ pub const Pin = enum(u5) {
         }
     }
 
+    // change the value currently at the gpio to the other value
     pub inline fn toggle_value(pin: Pin) void {
         Sio.gpio_out_xor().write(pin.mask());
     }
 
+    // get the value stored at the gpio
     pub inline fn read(pin: Pin) u1 {
         return if (Sio.gpio_in().read() & pin.mask() != 0)
             1
@@ -99,14 +110,17 @@ pub const Pin = enum(u5) {
             0;
     }
 
+    // set the gpio pad registers input enabled
     pub inline fn set_input_enabled(pin: Pin, enable: bool) void {
         pin.pad_reg().modify(.{ .input_enabled = @intFromBool(enable) });
     }
 
+    // set the gpio pad registers output disabled
     pub inline fn set_output_disabled(pin: Pin, disable: bool) void {
         pin.pad_reg().modify(.{ .output_disabled = @intFromBool(disable) });
     }
 
+    // set the function which the gpio works on
     pub inline fn set_function(pin: Pin, function: Function) void {
         pin.pad_reg().modify(.{
             .input_enabled = 1,
@@ -122,19 +136,23 @@ pub const Pin = enum(u5) {
         });
     }
 
+    // set slew rate of the pad register of the gpio
     pub inline fn set_slew(pin: Pin, slew: Slew) void {
         pin.pad_reg().modify(.{ .slew = slew });
     }
 
+    // set schmitt trigger of the pad register of the gpio
     pub inline fn set_schmitt_trigger_enable(pin: Pin, enable: bool) void {
         pin.pad_reg().modify(.{ .schmitt = @intFromBool(enable) });
     }
 
+    // set drive strength of the pad register of the gpio
     pub inline fn set_drive_strength(pin: Pin, drive: Drive) void {
         pin.pad_reg().modify(.{ .drive = drive });
     }
 };
 
+// See Section 2.19.6 List of Registers 
 pub const Overdrive = enum(u2) {
     normal = 0x0,
     invert = 0x1,
