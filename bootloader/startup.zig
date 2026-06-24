@@ -80,12 +80,23 @@ pub const VectorTable = extern struct {
     reset: *const fn () callconv(.naked) noreturn,
     nmi: ?*const fn () callconv(.c) void = null,
     hard_fault: ?*const fn () callconv(.c) void = null,
+    reserved_1: [7]?*const anyopaque = [1]?*const anyopaque{null} ** 7,
+    sv_call: ?*const fn () callconv(.c) void = null,
+    reserved_2: [2]?*const anyopaque = [1]?*const anyopaque{null} ** 2,
+    pend_sv: ?*const fn () callconv(.c) void = null,
+    sys_tick: ?*const fn () callconv(.c) void = null,
 };
 
 extern const _stack_top: anyopaque;
+
+pub fn default_sys_tick_handler() callconv(.c) void {
+    const ptr: *volatile u32 = &hal.systicks.sys_tick_count;
+    ptr.* += 1;
+}
 
 // Place the vector table in the .vectors section
 export const vector_table: VectorTable linksection(".vectors") = .{
     .initial_sp = &_stack_top,
     .reset = _start,
+    .sys_tick = default_sys_tick_handler,
 };

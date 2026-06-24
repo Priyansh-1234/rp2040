@@ -3,6 +3,7 @@ pub const xosc = @import("xosc.zig");
 pub const clocks = @import("clocks.zig");
 pub const gpio = @import("gpio.zig");
 pub const uart = @import("uart.zig");
+pub const systicks = @import("systicks.zig");
 
 /// Initialize the HAL and baseline system components.
 /// This resets all non-critical peripheral blocks (using resets.init) and then

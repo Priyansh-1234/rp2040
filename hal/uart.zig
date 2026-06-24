@@ -1,5 +1,5 @@
-pub const Register = @import("register.zig").Register;
-pub const Resets = @import("resets.zig");
+const Register = @import("register.zig").Register;
+const Resets = @import("resets.zig");
 
 pub const UART0_base: u32 = 0x4003_4000;
 pub const UART1_base: u32 = 0x4003_8000;

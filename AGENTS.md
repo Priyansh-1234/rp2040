@@ -44,6 +44,7 @@ Below is the layout of the project workspace:
     *   [xosc.zig](file:///home/priyansh/projects/rp2040/hal/xosc.zig) - External Crystal Oscillator (XOSC) configuration using RMW packed register structures.
     *   [pll.zig](file:///home/priyansh/projects/rp2040/hal/pll.zig) - Phase-Locked Loop (PLL) configuration layout.
     *   [uart.zig](file:///home/priyansh/projects/rp2040/hal/uart.zig) - Hardware UART (PL011) driver supporting baud rate calculations, FIFO operations, and line formatting.
+    *   [systicks.zig](file:///home/priyansh/projects/rp2040/hal/systicks.zig) - Core Cortex-M0+ SysTick timer configuration, volatile global tick counter, and safe getter function.
 *   [src/](file:///home/priyansh/projects/rp2040/src)
     *   [main.zig](file:///home/priyansh/projects/rp2040/src/main.zig) - Application entry point.
 *   [tools/](file:///home/priyansh/projects/rp2040/tools)
@@ -95,9 +96,10 @@ This section serves as a history log of what has been accomplished, design decis
 *   **Clock Tree Routing and 125 MHz Main Speed:** Successfully configured the clock tree to route `clk_sys` to `pll_sys` (running at 125 MHz), `clk_ref` to `xosc` (12 MHz), `clk_peri` to `clk_sys` (125 MHz), `clk_usb`/`clk_adc` to `pll_usb` (48 MHz), and `clk_rtc` to `xosc` divided by 256.
 *   **GPIO / SIO Driver:** Completed a basic GPIO and Single-Cycle IO (SIO) driver supporting pin direction configuration, function selection (FSEL), and atomic output toggle/write operations.
 *   **Type-Safe UART (PL011) Driver:** Co-developed and implemented a custom PL011 UART driver in `hal/uart.zig` and exposed it in `hal/hal.zig`. Configured it to compute integer/fractional baud rate divisors at runtime based on `clk_peri` and latch them using a Line Control register write. Corrected bugs in word length configuration (mapping `@"6"` correctly to `0x1`) and spelling errors.
+*   **Expanded Exception Table:** Expanded the `VectorTable` in `bootloader/startup.zig` to include all 16 standard ARM Cortex-M0+ exception types (including SVCall, PendSV, and SysTick) rather than just the initial 4.
+*   **Safe SysTick Driver & Interrupt Integration:** Designed a driver for the Cortex-M0+ SysTick timer in `hal/systicks.zig` and integrated it with the `default_sys_tick_handler` in `startup.zig`. Cleanly avoided compiler-rt helper dependencies (`__atomic_fetch_add_4`) by casting the shared tick variable to a volatile pointer (`*volatile u32`) inside exception contexts.
 
 ### Backlog & Next Steps
-1.  **Verify UART Driver:** Hook up a USB-to-UART adapter to GP0/GP1 tomorrow to test printing serial output from `main.zig`.
-2.  **SysTick Setup:** Guide the initialization of the ARM Cortex-M0+ SysTick timer to drive scheduling ticks.
-3.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers.
-4.  **Task TCB Design:** Draft the Task Control Block (TCB) structures.
+1.  **Task TCB Design:** Draft the Task Control Block (TCB) structure and task states.
+2.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers on Cortex-M0+.
+3.  **Verify UART and Ticks:** Hook up a USB-to-UART adapter to GP0/GP1 to test printing SysTick uptime ticks to UART0 from `main.zig`.
