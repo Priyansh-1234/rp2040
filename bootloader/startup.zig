@@ -1,6 +1,7 @@
 const std = @import("std");
 const app = @import("app");
 const hal = @import("hal");
+const rtos = @import("rtos");
 
 // Linker symbols
 extern const _sidata: u32;
@@ -99,4 +100,5 @@ export const vector_table: VectorTable linksection(".vectors") = .{
     .initial_sp = &_stack_top,
     .reset = _start,
     .sys_tick = default_sys_tick_handler,
+    .pend_sv = rtos.scheduler.pend_sv_handler,
 };

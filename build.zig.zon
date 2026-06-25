@@ -11,5 +11,8 @@
     "tools",
     "bootloader",
     "hal",
+    "rtos",
+    "README.md",
+    "LICENSE",
     } 
 }

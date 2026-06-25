@@ -34,6 +34,15 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
 
+    const rtos_module = b.createModule(.{
+        .root_source_file = b.path("rtos/rtos.zig"),
+        .target = target,
+        .optimize = .ReleaseSmall,
+        .imports = &.{
+            .{ .name = "hal", .module = hal_module },
+        },
+    });
+
     // The user can create the files in the src/main.zig file
     // and the start of their code is the main function.
     // Currently the main function can't take the init parameter
@@ -41,17 +50,23 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = .ReleaseSmall,
+        .imports = &.{
+            .{ .name = "hal", .module = hal_module },
+            .{ .name = "rtos", .module = rtos_module },
+        },
     });
-    app_module.addImport("hal", hal_module);
 
     // This is the actual entry point of the code
     const startup_module = b.createModule(.{
         .root_source_file = b.path("bootloader/startup.zig"),
         .target = target,
         .optimize = .ReleaseSmall,
+        .imports = &.{
+            .{ .name = "app", .module = app_module },
+            .{ .name = "hal", .module = hal_module },
+            .{ .name = "rtos", .module = rtos_module },
+        },
     });
-    startup_module.addImport("app", app_module);
-    startup_module.addImport("hal", hal_module);
 
     const exe = b.addExecutable(.{
         .name = "firmware",
