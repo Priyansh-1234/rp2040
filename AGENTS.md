@@ -98,8 +98,10 @@ This section serves as a history log of what has been accomplished, design decis
 *   **Type-Safe UART (PL011) Driver:** Co-developed and implemented a custom PL011 UART driver in `hal/uart.zig` and exposed it in `hal/hal.zig`. Configured it to compute integer/fractional baud rate divisors at runtime based on `clk_peri` and latch them using a Line Control register write. Corrected bugs in word length configuration (mapping `@"6"` correctly to `0x1`) and spelling errors.
 *   **Expanded Exception Table:** Expanded the `VectorTable` in `bootloader/startup.zig` to include all 16 standard ARM Cortex-M0+ exception types (including SVCall, PendSV, and SysTick) rather than just the initial 4.
 *   **Safe SysTick Driver & Interrupt Integration:** Designed a driver for the Cortex-M0+ SysTick timer in `hal/systicks.zig` and integrated it with the `default_sys_tick_handler` in `startup.zig`. Cleanly avoided compiler-rt helper dependencies (`__atomic_fetch_add_4`) by casting the shared tick variable to a volatile pointer (`*volatile u32`) inside exception contexts.
+*   **Task TCB and Scheduler Design:** Implemented a FreeRTOS-inspired scheduler in `rtos/scheduler.zig` with a fixed-size round-robin task array. The task stack is pre-populated with a 16-word dummy frame (including `xPSR` with Thumb bit set and `LR` pointing to an error trap).
+*   **Context Switching Mechanics:** Implemented the PendSV exception handler in `rtos/scheduler.zig` using naked inline assembly to seamlessly push/pop R4-R11 and interface with the Zig scheduler via a globally exported `current_task_sp` pointer. Fixed SHPR3 register offset layout bugs in `rtos/exceptions.zig`.
 
 ### Backlog & Next Steps
-1.  **Task TCB Design:** Draft the Task Control Block (TCB) structure and task states.
-2.  **Context Switching Mechanics:** Outline the PendSV exception handler structure in Zig/Assembly to swap task registers on Cortex-M0+.
-3.  **Verify UART and Ticks:** Hook up a USB-to-UART adapter to GP0/GP1 to test printing SysTick uptime ticks to UART0 from `main.zig`.
+1.  **Wire up the Scheduler:** Link `rtos.scheduler.pend_sv_handler` into the `.pend_sv` field of the `VectorTable` in `startup.zig` and modify `build.zig` to expose the RTOS module to the startup sequence.
+2.  **Verify UART and Ticks:** Hook up a USB-to-UART adapter to GP0/GP1 to test printing SysTick uptime ticks to UART0 from `main.zig`.
+3.  **Launch First Task:** Create a basic blinking/printing task in `main.zig` and call `scheduler.start()` to begin context switching.
